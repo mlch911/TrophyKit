@@ -16,7 +16,7 @@ public struct TrophyConfiguration {
         case large
     }
 	
-	public struct Style {
+	public struct Style: Equatable {
 		public let lightColor: UIColor
 		public let darkColor: UIColor
 		
