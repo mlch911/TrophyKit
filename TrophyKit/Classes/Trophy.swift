@@ -9,6 +9,10 @@ import UIKit
 
 /// Main class for `TrophyKit`.
 public class Trophy {
+	public enum Direction {
+		case up
+		case down
+	}
 
     /// Static constants
     private static let horizontalPadding: CGFloat = 24.0
@@ -222,6 +226,7 @@ public class Trophy {
     ///   - trophyIcon: Image for trophy icon that is shown on the left side of the banner. Usually can be
     ///                 a trophy or rosette.
     public func show(in view: UIView,
+					 fromDirection: Direction = .up,
                      title: String,
                      subtitle: String? = nil,
                      icon: UIImage? = nil,
@@ -257,6 +262,14 @@ public class Trophy {
         /// Total width is labelView.width plus radius of left circle (height / 2),
         /// therefore pad the leading side to make sure that the whole view is center aligned.
         let labelViewCenterXConstraint = labelView.centerXAnchor.constraint(equalTo: container.centerXAnchor, constant: height / 4)
+		
+		let containerVerticalConstraint = {
+			if fromDirection == .up {
+				return container.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: Self.bottomPadding)
+			} else {
+				return container.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Self.bottomPadding)
+			}
+		}()
 
         initialConstraints = [
             circleViewCenterXConstraint,
@@ -267,7 +280,7 @@ public class Trophy {
             container.leadingAnchor.constraint(lessThanOrEqualTo: view.leadingAnchor, constant: Self.horizontalPadding),
             container.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -Self.horizontalPadding),
             container.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            container.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -Self.bottomPadding),
+			containerVerticalConstraint,
         ]
         NSLayoutConstraint.activate(initialConstraints)
 
@@ -278,11 +291,14 @@ public class Trophy {
         let bannerShowTime = 3.0
 
         /// Before animation parameters.
-        circleView.transform = CGAffineTransform(scaleX: 0, y: 0)
+		circleView.transform = CGAffineTransform(scaleX: 0, y: 0)
+		let containerTranslation = (fromDirection == .up ? -1 : 1) * (Self.bottomPadding + (fromDirection == .up ? view.safeAreaInsets.top : view.safeAreaInsets.bottom) + height)
+		container.transform = CGAffineTransform(translationX: 0, y: containerTranslation)
 
         /// TODO: Refactory this silly animate chain. Somehow `UIViewPropertyAnimator` not working properly.
         UIView.animate(withDuration: circleDuration, delay: 0.0, options: .curveEaseInOut) {
             self.circleView.transform = .identity
+			container.transform = .identity
         } completion: { _ in
             UIView.animate(withDuration: bannerDuration, delay: circleShowTime, options: .curveEaseInOut) {
                 self.iconView.alpha = 0.0
@@ -307,6 +323,7 @@ public class Trophy {
                 } completion: { _ in
                     UIView.animate(withDuration: circleDuration, delay: bannerDuration, options: .curveEaseInOut) {
                         self.circleView.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+						container.transform = CGAffineTransform(translationX: 0, y: containerTranslation)
                     } completion: { finished in
                         /// Reset `isShown` flag when everything is done.
                         defer {
@@ -321,26 +338,28 @@ public class Trophy {
             }
         }
     }
-
-    /// Shows an animated trophy banner in a given view, with SF Symbol images.
-    ///
-    /// - Parameters:
-    ///   - view: The view in which the animated trophy banner should be shown.
-    ///   - title: Title text for banner.
-    ///   - subtitle: Subtitle text for banner.
-    ///   - iconSymbol: SF Symbol for icon image.
-    ///   - trophyIconSymbol: SF Symbol for trophy image.
-    public func show(in view: UIView,
-                     title: String,
-                     subtitle: String? = nil,
-                     iconSymbol: String? = nil,
-                     trophyIconSymbol: String? = nil) {
-        show(in: view,
-             title: title,
-             subtitle: subtitle,
-             icon: makeOptionalImage(for: iconSymbol),
-             trophyIcon: makeOptionalImage(for: trophyIconSymbol))
-    }
+	
+	/// Shows an animated trophy banner in a given view, with SF Symbol images.
+	///
+	/// - Parameters:
+	///   - view: The view in which the animated trophy banner should be shown.
+	///   - title: Title text for banner.
+	///   - subtitle: Subtitle text for banner.
+	///   - iconSymbol: SF Symbol for icon image.
+	///   - trophyIconSymbol: SF Symbol for trophy image.
+	public func showSF(in view: UIView,
+					 fromDirection: Direction = .up,
+					 title: String,
+					 subtitle: String? = nil,
+					 iconSymbol: String? = nil,
+					 trophyIconSymbol: String? = nil) {
+		show(in: view,
+			 fromDirection: fromDirection,
+			 title: title,
+			 subtitle: subtitle,
+			 icon: makeOptionalImage(for: iconSymbol),
+			 trophyIcon: makeOptionalImage(for: trophyIconSymbol))
+	}
 
     /// Shows an animated trophy banner in a given view controller.
     ///
@@ -353,34 +372,37 @@ public class Trophy {
     ///   - trophyIcon: Image for trophy icon that is shown on the left side of the banner. Usually can be
     ///                 a trophy or rosette.
     public func show(from viewController: UIViewController,
+					 fromDirection: Direction = .up,
                      title: String,
                      subtitle: String? = nil,
                      icon: UIImage? = nil,
                      trophyIcon: UIImage? = nil) {
         show(in: viewController.view,
+			 fromDirection: fromDirection,
              title: title,
              subtitle: subtitle,
              icon: icon,
              trophyIcon: trophyIcon)
     }
 
-    /// Shows an animated trophy banner in a given view controller, with SF Symbol images.
-    /// - Parameters:
-    ///   - viewController: `UIViewController` in which the banner is shown.
-    ///   - title: Title text for banner.
-    ///   - subtitle: Subtitle text for banner.
-    ///   - iconSymbol: SF Symbol for icon image.
-    ///   - trophyIconSymbol: SF Symbol for trophy image.
-    public func show(from viewController: UIViewController,
-                     title: String,
-                     subtitle: String? = nil,
-                     iconSymbol: String? = nil,
-                     trophyIconSymbol: String? = nil) {
-        show(from: viewController,
-             title: title,
-             subtitle: subtitle,
-             icon: makeOptionalImage(for: iconSymbol),
-             trophyIcon: makeOptionalImage(for: trophyIconSymbol))
-    }
-
+	/// Shows an animated trophy banner in a given view controller, with SF Symbol images.
+	/// - Parameters:
+	///   - viewController: `UIViewController` in which the banner is shown.
+	///   - title: Title text for banner.
+	///   - subtitle: Subtitle text for banner.
+	///   - iconSymbol: SF Symbol for icon image.
+	///   - trophyIconSymbol: SF Symbol for trophy image.
+	public func showSF(from viewController: UIViewController,
+					 fromDirection: Direction = .up,
+					 title: String,
+					 subtitle: String? = nil,
+					 iconSymbol: String? = nil,
+					 trophyIconSymbol: String? = nil) {
+		show(from: viewController,
+			 fromDirection: fromDirection,
+			 title: title,
+			 subtitle: subtitle,
+			 icon: makeOptionalImage(for: iconSymbol),
+			 trophyIcon: makeOptionalImage(for: trophyIconSymbol))
+	}
 }
